@@ -10,7 +10,7 @@ To include this library to your Rust project, add this section to your
 
 ```toml
 [dependencies.newslab-geom-algo]
-git = "https://github.com/jerry73204/newslab-geom-algo.git"
+git = "https://github.com/NEWSLabNTU/newslab-geom-algo.git"
 tag = "v0.1.0"
 ```
 
