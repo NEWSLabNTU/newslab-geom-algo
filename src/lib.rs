@@ -1,3 +1,5 @@
+//! Geometric Algorithms from NEWSLAB, National Taiwan University
+
 mod haversine;
 pub use haversine::*;
 
