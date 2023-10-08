@@ -303,7 +303,7 @@ mod tests {
             .filter_map(|(lp, rp)| {
                 let distance = lp.distance(&rp);
                 let ok = distance <= max_dist;
-                ok.then(|| Pair { distance, lp, rp })
+                ok.then_some(Pair { distance, lp, rp })
             })
             .collect();
         eprintln!("elapsed time (naive): {:?}", since.elapsed());

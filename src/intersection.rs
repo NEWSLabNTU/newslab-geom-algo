@@ -1,21 +1,28 @@
-use anyhow::Result;
-use geo::prelude::*;
+use anyhow::{bail, Result};
+use geo::{prelude::*, Coord, LineString, Polygon, Rect};
 use itertools::chain;
 use log::warn;
+use num::Float;
 use sfcgal::{CoordSeq, ToCoordinates, ToSFCGAL};
+use std::fmt::Debug;
 
 /// Computes the IoU among a rectangle and a polygon.
-pub fn rect_hull_iou(rect: &geo::Rect<f64>, hull: &geo::Polygon<f64>) -> Result<f64> {
+pub fn rect_hull_iou<T>(rect: &Rect<T>, hull: &Polygon<T>) -> Result<T>
+where
+    T: Debug + Float,
+{
+    let epsilon = T::from(1e-6).unwrap();
+
     let intersection = match rect_hull_intersection(rect, hull)? {
         Some(intersection) => intersection,
-        None => return Ok(0.0),
+        None => return Ok(T::zero()),
     };
     let rect_area = rect.unsigned_area();
     let hull_area = hull.unsigned_area();
     let intersection_area = intersection.unsigned_area();
 
-    let roi = if rect_area <= 1e-6 || hull_area <= 1e-6 {
-        0.0
+    let roi = if rect_area <= epsilon || hull_area <= epsilon {
+        T::zero()
     } else {
         intersection_area * (rect_area.recip() + hull_area.recip())
     };
@@ -24,22 +31,38 @@ pub fn rect_hull_iou(rect: &geo::Rect<f64>, hull: &geo::Polygon<f64>) -> Result<
 }
 
 /// Computes the intersection polygon among a rectangle and a polygon.
-pub fn rect_hull_intersection(
-    rect: &geo::Rect<f64>,
-    hull: &geo::Polygon<f64>,
-) -> Result<Option<geo::Polygon<f64>>> {
+pub fn rect_hull_intersection<T>(rect: &Rect<T>, hull: &Polygon<T>) -> Result<Option<Polygon<T>>>
+where
+    T: Debug + Float,
+{
+    let cast_f64 =
+        |(x, y): (T, T)| -> (f64, f64) { (num::cast(x).unwrap(), num::cast(y).unwrap()) };
+    let cast_t = |(x, y): (f64, f64)| -> (T, T) { (num::cast(x).unwrap(), num::cast(y).unwrap()) };
+
     let rect = {
         let ll = rect.min();
         let ru = rect.max();
-        let lu = geo::Coordinate { x: ll.x, y: ru.y };
-        let rl = geo::Coordinate { x: ru.x, y: ll.y };
-        let exterior = vec![ll.x_y(), rl.x_y(), ru.x_y(), lu.x_y(), ll.x_y()];
+        let lu = Coord { x: ll.x, y: ru.y };
+        let rl = Coord { x: ru.x, y: ll.y };
+        let exterior: Vec<(f64, f64)> = [ll.x_y(), rl.x_y(), ru.x_y(), lu.x_y(), ll.x_y()]
+            .into_iter()
+            .map(cast_f64)
+            .collect();
         CoordSeq::Polygon(vec![exterior]).to_sfcgal()?
     };
     let hull = {
-        let exterior: Vec<_> = hull.exterior().points().map(|point| point.x_y()).collect();
+        let exterior: Vec<_> = hull
+            .exterior()
+            .points()
+            .map(|point| point.x_y())
+            .map(cast_f64)
+            .collect();
         let interiors = hull.interiors().iter().map(|linestring| {
-            let points: Vec<_> = linestring.points().map(|point| point.x_y()).collect();
+            let points: Vec<_> = linestring
+                .points()
+                .map(|point| point.x_y())
+                .map(cast_f64)
+                .collect();
             points
         });
         let linestrings: Vec<_> = chain!([exterior], interiors).collect();
@@ -48,8 +71,7 @@ pub fn rect_hull_intersection(
         match polygon {
             Some(polygon) => polygon,
             None => {
-                warn!("not a valid polygon");
-                return Ok(None);
+                bail!("not a valid polygon");
             }
         }
     };
@@ -58,52 +80,55 @@ pub fn rect_hull_intersection(
         let intersection = match intersection {
             Some(int) => int,
             None => {
-                warn!("failed to compute polygon intersection");
-                return Ok(None);
+                bail!("failed to compute polygon intersection");
             }
         };
         intersection.to_coordinates::<(f64, f64)>()?
     };
-    let polygon_opt = match intersection {
+    let polygon = match intersection {
         CoordSeq::Polygon(linestrings) => {
             let mut linestrings_iter = linestrings.into_iter();
-            let exterior = geo::LineString(
+            let exterior = LineString(
                 linestrings_iter
                     .next()
                     .unwrap()
                     .into_iter()
-                    .map(|(x, y)| geo::Coordinate { x, y })
+                    .map(cast_t)
+                    .map(|(x, y)| Coord { x, y })
                     .collect(),
             );
             let interiors: Vec<_> = linestrings_iter
                 .map(|linestring| {
-                    geo::LineString(
+                    LineString(
                         linestring
                             .into_iter()
-                            .map(|(x, y)| geo::Coordinate { x, y })
+                            .map(cast_t)
+                            .map(|(x, y)| Coord { x, y })
                             .collect(),
                     )
                 })
                 .collect();
-            Some(geo::Polygon::new(exterior, interiors))
+            Polygon::new(exterior, interiors)
         }
         CoordSeq::Triangle(linestring) => {
-            let exterior = geo::LineString(
+            let exterior = LineString(
                 linestring
                     .into_iter()
-                    .map(|(x, y)| geo::Coordinate { x, y })
+                    .map(cast_t)
+                    .map(|(x, y)| Coord { x, y })
                     .collect(),
             );
-            Some(geo::Polygon::new(exterior, vec![]))
+            Polygon::new(exterior, vec![])
         }
         CoordSeq::Geometrycollection(collection) => {
             assert!(collection.is_empty());
-            None
+            return Ok(None);
         }
         _ => {
             warn!("unexpected intersection");
-            None
+            return Ok(None);
         }
     };
-    Ok(polygon_opt)
+
+    Ok(Some(polygon))
 }

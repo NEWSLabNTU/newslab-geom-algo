@@ -1,17 +1,14 @@
 mod haversine;
-pub use haversine::haversine;
+pub use haversine::*;
 
-#[cfg(feature = "with-nalgebra")]
-mod with_nalgebra;
-#[cfg(feature = "with-nalgebra")]
-pub use with_nalgebra::*;
+mod centroid;
+pub use centroid::*;
 
-#[cfg(feature = "with-geo")]
-mod with_geo;
-#[cfg(feature = "with-geo")]
-pub use with_geo::*;
+mod kabsch;
+pub use kabsch::*;
 
-#[cfg(feature = "with-nalgebra")]
-pub mod close_point_pair_2d;
-#[cfg(feature = "with-nalgebra")]
-pub use close_point_pair_2d::enumerate_close_pairs_2d;
+mod intersection;
+pub use intersection::*;
+
+mod close_point_pair_2d;
+pub use close_point_pair_2d::*;
