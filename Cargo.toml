@@ -14,10 +14,10 @@ collected = "0.4.0"
 unzip-n = "0.1.2"
 geo = { version = "0.26.0" }
 sfcgal = { version = "0.6.0" }
-nalgebra = { version = "0.30.1" }
+nalgebra = { version = "0.32.3" }
 num = "0.4.1"
 
 [dev-dependencies]
 approx = "0.5.1"
-nalgebra = { version = "0.30.1", features = ["rand"] }
+nalgebra = { version = "0.32.3", features = ["rand"] }
 rand = "0.8.5"
