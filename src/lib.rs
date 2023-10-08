@@ -14,3 +14,6 @@ pub use intersection::*;
 
 mod close_point_pair_2d;
 pub use close_point_pair_2d::*;
+
+mod types;
+pub use types::*;

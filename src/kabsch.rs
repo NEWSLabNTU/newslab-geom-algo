@@ -1,4 +1,7 @@
-use crate::centroid_of_points;
+use crate::{
+    centroid_of_points_na,
+    types::{IJKW, XYZ},
+};
 use nalgebra::{
     Const, Isometry3, Matrix3, Matrix3xX, Point3, RealField, Scalar, Translation3, UnitQuaternion,
     Vector3, SVD,
@@ -14,7 +17,31 @@ unzip_n::unzip_n!(4);
 ///
 /// The function accepts an iterator of point pairs `(P, Q)`, where
 /// `Q` is target point for `P`.
-pub fn kabsch<T, P, Q, I>(input_target_pairs: I) -> Option<Isometry3<T>>
+pub fn kabsch<T, I>(input_target_pairs: I) -> Option<(XYZ<T>, IJKW<T>)>
+where
+    T: Scalar + Float + Default + RealField,
+    I: IntoIterator<Item = ([T; 3], [T; 3])>,
+{
+    let pairs = input_target_pairs
+        .into_iter()
+        .map(|(p, q)| (Point3::from(p), Point3::from(q)));
+    let Isometry3 {
+        rotation,
+        translation,
+    } = kabsch_na(pairs)?;
+
+    let nalgebra::coordinates::XYZ { x, y, z } = *translation;
+    let nalgebra::coordinates::IJKW { i, j, k, w } = **rotation.quaternion();
+
+    Some((XYZ([x, y, z]), IJKW([i, j, k, w])))
+}
+
+/// Computes the optimal rotation from a point set to target point
+/// set.
+///
+/// The function accepts an iterator of point pairs `(P, Q)`, where
+/// `Q` is target point for `P`.
+pub fn kabsch_na<T, P, Q, I>(input_target_pairs: I) -> Option<Isometry3<T>>
 where
     T: Scalar + Float + Default + RealField,
     P: Borrow<Point3<T>>,
@@ -24,8 +51,8 @@ where
     let (input_points, target_points) = input_target_pairs.into_iter().unzip_n_vec();
 
     // compute centroids
-    let input_centroid = centroid_of_points(input_points.iter().map(Borrow::borrow))?;
-    let target_centroid = centroid_of_points(target_points.iter().map(Borrow::borrow))?;
+    let input_centroid = centroid_of_points_na(input_points.iter().map(Borrow::borrow))?;
+    let target_centroid = centroid_of_points_na(target_points.iter().map(Borrow::borrow))?;
 
     // translate centroid to origin
     let input_points: Vec<_> = input_points
@@ -84,10 +111,12 @@ mod tests {
             .map(|_| Vector3::new_random().into())
             .collect();
 
-        let transform = super::kabsch(izip!(input_points.clone(), target_points.clone())).unwrap();
+        let transform =
+            super::kabsch_na(izip!(input_points.clone(), target_points.clone())).unwrap();
 
         let optimized_input_points = input_points.into_iter().map(|point| transform * point);
-        let unit_transform = super::kabsch(izip!(optimized_input_points, target_points)).unwrap();
+        let unit_transform =
+            super::kabsch_na(izip!(optimized_input_points, target_points)).unwrap();
         assert_abs_diff_eq!(unit_transform, Isometry3::identity(), epsilon = 1e-5);
     }
 }
