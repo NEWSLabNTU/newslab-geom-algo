@@ -1,5 +1,5 @@
-mod with_std;
-pub use with_std::*;
+mod haversine;
+pub use haversine::haversine;
 
 #[cfg(feature = "with-nalgebra")]
 mod with_nalgebra;

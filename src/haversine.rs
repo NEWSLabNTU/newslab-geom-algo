@@ -1,4 +1,4 @@
-use num_traits::Float;
+use num::Float;
 use std::f64;
 
 pub fn haversine<T>((lon_l, lat_l): (T, T), (lon_r, lat_r): (T, T)) -> T
@@ -32,30 +32,39 @@ where
 
 #[cfg(test)]
 mod tests {
+    use crate::haversine;
     use approx::assert_abs_diff_eq;
     use rand::prelude::*;
 
     #[test]
     fn haversine_test() {
         use std::f64::consts::*;
-
         let mut rng = rand::thread_rng();
 
-        assert_abs_diff_eq!(super::haversine((0.0, 0.0), (0.0, 0.0)), 0.0);
-        assert_abs_diff_eq!(super::haversine((0.0, 0.0), (FRAC_PI_2, 0.0)), FRAC_PI_2);
-        assert_abs_diff_eq!(super::haversine((FRAC_PI_2, 0.0), (PI, 0.0)), FRAC_PI_2);
-        assert_abs_diff_eq!(super::haversine((0.0, 0.0), (0.0, FRAC_PI_2)), FRAC_PI_2);
+        assert_abs_diff_eq!(haversine::haversine((0.0, 0.0), (0.0, 0.0)), 0.0);
         assert_abs_diff_eq!(
-            super::haversine((0.0, -FRAC_PI_4), (0.0, FRAC_PI_4)),
+            haversine::haversine((0.0, 0.0), (FRAC_PI_2, 0.0)),
             FRAC_PI_2
         );
-        assert_abs_diff_eq!(super::haversine((0.0, -FRAC_PI_2), (0.0, FRAC_PI_2)), PI);
+        assert_abs_diff_eq!(haversine::haversine((FRAC_PI_2, 0.0), (PI, 0.0)), FRAC_PI_2);
+        assert_abs_diff_eq!(
+            haversine::haversine((0.0, 0.0), (0.0, FRAC_PI_2)),
+            FRAC_PI_2
+        );
+        assert_abs_diff_eq!(
+            haversine::haversine((0.0, -FRAC_PI_4), (0.0, FRAC_PI_4)),
+            FRAC_PI_2
+        );
+        assert_abs_diff_eq!(
+            haversine::haversine((0.0, -FRAC_PI_2), (0.0, FRAC_PI_2)),
+            PI
+        );
 
         for _ in 0..100 {
             assert_abs_diff_eq!(
                 {
                     let lon = rng.gen_range(0.0..=PI);
-                    super::haversine((lon, 0.0), (lon + PI, 0.0))
+                    haversine::haversine((lon, 0.0), (lon + PI, 0.0))
                 },
                 PI
             );
@@ -63,7 +72,7 @@ mod tests {
                 {
                     let lon = rng.gen_range(0.0..=PI);
                     let lat = rng.gen_range((-FRAC_PI_2)..=FRAC_PI_2);
-                    super::haversine((lon, lat), (lon + PI, -lat))
+                    haversine::haversine((lon, lat), (lon + PI, -lat))
                 },
                 PI
             );

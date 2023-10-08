@@ -1,6 +1,6 @@
 use itertools::chain;
 use noisy_float::prelude::{N64, R64};
-use num_traits::{Float, NumCast};
+use num::{Float, NumCast};
 use std::{
     collections::{BTreeMap, VecDeque},
     marker::PhantomData,
